@@ -1,0 +1,25 @@
+# Big downloaded files — never commit these.
+*.zim
+*.zim.part
+*.gguf
+*.bin
+*.safetensors
+models/
+data/
+blobs/
+
+# Personal settings and generated files
+config.local.env
+docker/.env
+
+# Test build output
+tests/.build/
+tests/output/
+
+# Python / editor junk
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.swp
+*.log

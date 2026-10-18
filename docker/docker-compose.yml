@@ -1,0 +1,55 @@
+# Open WebUI for the cyberdeck.
+# install.sh copies this file to ${INSTALL_DIR}/docker/ and writes a .env file
+# next to it with the values from config.env. Don't put settings here —
+# change config.env and run ./install.sh again.
+name: cyberdeck
+
+services:
+  open-webui:
+    image: ${OPEN_WEBUI_IMAGE}
+    container_name: open-webui
+    # Host networking: the container reaches Ollama (127.0.0.1:11434) and Kiwix
+    # (127.0.0.1:8090) directly, so neither has to listen on the network.
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - ${OPEN_WEBUI_DATA_DIR}:/app/backend/data
+    environment:
+      HOST: ${OPEN_WEBUI_BIND}
+      PORT: ${OPEN_WEBUI_PORT}
+      OLLAMA_BASE_URL: http://127.0.0.1:${OLLAMA_PORT}
+      # Single-user deck: no login screen.
+      WEBUI_AUTH: "False"
+      WEBUI_NAME: Cyberdeck
+      DEFAULT_MODELS: ${OPEN_WEBUI_MODEL_ID}
+      # Fully offline: no update checks, no downloads from Hugging Face.
+      OFFLINE_MODE: "True"
+      ENABLE_VERSION_UPDATE_CHECK: "False"
+      ENABLE_OPENAI_API: "False"
+      ENABLE_COMMUNITY_SHARING: "False"
+      ENABLE_WEB_SEARCH: "False"
+      ENABLE_IMAGE_GENERATION: "False"
+      ANONYMIZED_TELEMETRY: "False"
+      DO_NOT_TRACK: "True"
+      SCARF_NO_ANALYTICS: "True"
+      # Keep the background work light on a 4-core N95.
+      UVICORN_WORKERS: "1"
+      THREAD_POOL_SIZE: "8"
+      # Skip the extra LLM calls Open WebUI makes after each answer.
+      ENABLE_TITLE_GENERATION: "False"
+      ENABLE_TAGS_GENERATION: "False"
+      ENABLE_FOLLOW_UP_GENERATION: "False"
+      ENABLE_AUTOCOMPLETE_GENERATION: "False"
+      ENABLE_SEARCH_QUERY_GENERATION: "False"
+      ENABLE_RETRIEVAL_QUERY_GENERATION: "False"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${OPEN_WEBUI_PORT}/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 180s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "2"
