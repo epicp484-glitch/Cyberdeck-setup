@@ -55,9 +55,10 @@ as_root() {
   if [[ "$(id -u)" -eq 0 ]]; then run "$@"; else run sudo "$@"; fi
 }
 
-# root <cmd...>: read-only command that needs root (runs even in dry-run).
+# root <cmd...>: read-only command that may need root (runs even in dry-run;
+# a dry run never asks for a password, so it runs without sudo then).
 root() {
-  if [[ "$(id -u)" -eq 0 ]]; then "$@"; else sudo "$@"; fi
+  if [[ "$(id -u)" -eq 0 ]] || is_dry_run; then "$@"; else sudo "$@"; fi
 }
 
 # as_user <user> <cmd...>: run a command as the desktop user.

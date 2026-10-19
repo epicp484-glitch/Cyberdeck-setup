@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#0d1117"/>
+  <rect x="16" y="16" width="32" height="32" rx="6" fill="none" stroke="#39d353" stroke-width="3"/>
+  <g stroke="#39d353" stroke-width="3" stroke-linecap="round">
+    <path d="M24 10v6M32 10v6M40 10v6M24 48v6M32 48v6M40 48v6M10 24h6M10 32h6M10 40h6M48 24h6M48 32h6M48 40h6"/>
+  </g>
+  <text x="32" y="38" font-family="DejaVu Sans, sans-serif" font-size="15" font-weight="bold" fill="#39d353" text-anchor="middle">AI</text>
+</svg>
