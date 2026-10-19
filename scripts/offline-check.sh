@@ -105,7 +105,8 @@ fi
 # Run the tool exactly as Open WebUI does, inside its container.
 tool_test='
 import asyncio, sys, types
-mod = types.ModuleType("offline_wikipedia")
+mod = types.ModuleType("tool_offline_wikipedia")   # loaded the way Open WebUI loads tools
+sys.modules[mod.__name__] = mod
 exec(compile(sys.stdin.read(), "offline_wikipedia.py", "exec"), mod.__dict__)
 t = mod.Tools(); t.valves.KIWIX_URL = sys.argv[1]
 print(asyncio.run(t.search_wikipedia(sys.argv[2]))[:300])

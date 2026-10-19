@@ -12,8 +12,6 @@ license: MIT
 # It only uses the Python standard library (plus pydantic, which Open WebUI
 # already has), so it runs anywhere with no extra installs and no internet.
 
-from __future__ import annotations
-
 import asyncio
 import html
 import json

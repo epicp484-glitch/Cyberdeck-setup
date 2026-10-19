@@ -33,14 +33,15 @@ CONFIG_CANDIDATES = [
 
 
 def load_config() -> dict:
-    """Read config.env (+ config.local.env) by letting bash evaluate it."""
+    """Read config.env (+ config.local.env, + $CYBERDECK_CONFIG) by letting bash evaluate it,
+    the same way the shell scripts do."""
     for d in CONFIG_CANDIDATES:
         path = os.path.join(d, "config.env") if d else ""
         if path and os.path.isfile(path):
-            local = os.path.join(d, "config.local.env")
             script = f"set -a; source {shlex.quote(path)}; "
-            if os.path.isfile(local):
-                script += f"source {shlex.quote(local)}; "
+            for extra in (os.path.join(d, "config.local.env"), os.environ.get("CYBERDECK_CONFIG", "")):
+                if extra and os.path.isfile(extra):
+                    script += f"source {shlex.quote(extra)}; "
             script += "env -0"
             try:
                 out = subprocess.run(["bash", "-c", script], capture_output=True, check=True).stdout

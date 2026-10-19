@@ -113,14 +113,15 @@ def ensure_tool(api: Api, tool_file: str, valves: dict) -> str:
     return result
 
 
-def wait_for_base_model(api: Api, base_model: str, seconds: int) -> None:
-    """Open WebUI lists Ollama's models; wait until it sees ours."""
+def wait_for_base_model(api: Api, base_model: str, seconds: int) -> str:
+    """Open WebUI lists Ollama's models; wait until it sees ours and return its exact id."""
     deadline = time.time() + seconds
     while True:
         res = api.request("GET", "/api/models") or {}
         ids = {m.get("id") for m in res.get("data", [])}
-        if base_model in ids or f"{base_model}:latest" in ids:
-            return
+        for candidate in (base_model, f"{base_model}:latest"):
+            if candidate in ids:
+                return candidate
         if time.time() > deadline:
             raise SystemExit(
                 f"Open WebUI can't see the Ollama model '{base_model}' (it sees: {sorted(i for i in ids if i)}). "
@@ -167,6 +168,17 @@ def ensure_model(api: Api, model_id: str, name: str, base_model: str, num_ctx: i
     if same:
         return "already up to date"
     api.request("POST", "/api/v1/models/model/update", form)
+    return "updated"
+
+
+def ensure_ui_settings(api: Api) -> str:
+    """No "What's new" popup or update toast covering the kiosk screen."""
+    wanted = {"showChangelog": False, "showUpdateToast": False}
+    settings = api.request("GET", "/api/v1/users/user/settings", ok_404=True) or {}
+    ui = settings.get("ui") or {}
+    if all(ui.get(k) == v for k, v in wanted.items()):
+        return "already set"
+    api.request("POST", "/api/v1/users/user/settings/update", {**settings, "ui": {**ui, **wanted}})
     return "updated"
 
 
@@ -218,8 +230,9 @@ def main() -> int:
         "MAX_ARTICLES": args.max_articles,
     }
     print(f"Wikipedia tool: {ensure_tool(api, args.tool_file, valves)}")
-    wait_for_base_model(api, args.base_model, 180)
-    print(f"Chat model '{args.model_name}': {ensure_model(api, args.model_id, args.model_name, args.base_model, args.num_ctx)}")
+    print(f"Kiosk-friendly settings (no pop-ups): {ensure_ui_settings(api)}")
+    base_model = wait_for_base_model(api, args.base_model, 180)
+    print(f"Chat model '{args.model_name}': {ensure_model(api, args.model_id, args.model_name, base_model, args.num_ctx)}")
     return 0
 
 

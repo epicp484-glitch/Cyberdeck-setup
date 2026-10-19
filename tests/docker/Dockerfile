@@ -26,6 +26,7 @@ RUN systemctl mask getty@tty1.service systemd-logind.service systemd-udevd.servi
 RUN useradd -m -s /bin/bash -G sudo deck \
  && echo 'deck ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/90-deck && chmod 440 /etc/sudoers.d/90-deck
 
-VOLUME ["/var/lib/docker"]
+# Docker inside the test machine needs real (non-overlay) storage for its images.
+VOLUME ["/var/lib/docker", "/var/lib/containerd"]
 STOPSIGNAL SIGRTMIN+3
 CMD ["/sbin/init"]

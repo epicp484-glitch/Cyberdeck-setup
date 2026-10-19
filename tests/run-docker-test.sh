@@ -42,7 +42,7 @@ cleanup() {
     echo "Container kept: docker exec -it -u deck $NAME bash   (remove: docker rm -f $NAME)"
   else
     docker rm -f "$NAME" >/dev/null 2>&1 || true
-    docker volume rm -f "$NAME-docker" >/dev/null 2>&1 || true
+    docker volume rm -f "$NAME-docker" "$NAME-containerd" >/dev/null 2>&1 || true
   fi
 }
 trap cleanup EXIT
@@ -117,11 +117,11 @@ docker build -q -t "$IMAGE" --build-arg BASE_IMAGE="$BASE_IMAGE" \
 pass "image $IMAGE built"
 
 docker rm -f "$NAME" >/dev/null 2>&1 || true
-docker volume rm -f "$NAME-docker" >/dev/null 2>&1 || true
+docker volume rm -f "$NAME-docker" "$NAME-containerd" >/dev/null 2>&1 || true
 docker run -d --name "$NAME" --hostname cyberdeck --privileged \
   --cgroupns=host -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
   --tmpfs /run --tmpfs /run/lock --tmpfs /tmp:exec \
-  -v "$NAME-docker:/var/lib/docker" \
+  -v "$NAME-docker:/var/lib/docker" -v "$NAME-containerd:/var/lib/containerd" \
   -v "$REPO_DIR:/home/deck/Cyberdeck-setup:ro" \
   -v "$BUILD/fixtures:/fixtures:ro" \
   -e CYBERDECK_CONFIG=/fixtures/test.env \
@@ -225,7 +225,25 @@ else
   as_deck tail -40 /home/deck/.local/state/cyberdeck/ai-mode.log || true
   fail "AI mode test failed (exit $code, see tests/output/4-ai-mode.log)"
 fi
-docker cp "$NAME:/tmp/kiosk.png" "$OUT/kiosk-screenshot.png" >/dev/null 2>&1 && pass "kiosk screenshot: tests/output/kiosk-screenshot.png"
+in_box cat /tmp/kiosk.png > "$OUT/kiosk-screenshot.png" 2>/dev/null && pass "kiosk screenshot: tests/output/kiosk-screenshot.png"
+
+# -----------------------------------------------------------------------------
+bold "Phase 4b: Open WebUI really runs the Wikipedia tool in a chat"
+# -----------------------------------------------------------------------------
+# The tiny test model can't decide to call tools, so a stand-in Ollama that always
+# asks for search_wikipedia takes its place for a moment. Open WebUI, the tool and
+# Kiwix are the real ones.
+in_box systemctl stop ollama
+docker exec -d -u deck "$NAME" sh -c 'python3 /home/deck/Cyberdeck-setup/tests/fixtures/fake_tool_ollama.py 11434 2>/tmp/fake-ollama.log'
+sleep 2
+as_deck python3 /home/deck/Cyberdeck-setup/tests/fixtures/chat_test.py >/dev/null
+for _ in $(seq 1 30); do in_box grep -q "TOOL RESULT" /tmp/fake-ollama.log && break; sleep 1; done
+result="$(in_box grep "TOOL RESULT" /tmp/fake-ollama.log || true)"
+in_box pkill -f fake_tool_ollama.py || true
+in_box systemctl start ollama
+[[ "$result" == *'Wikipedia article: "Capacitor"'* ]] || { in_box cat /tmp/fake-ollama.log; fail "Open WebUI did not run the tool"; }
+pass "Open WebUI offered the tool to the model, ran search_wikipedia and returned the article:"
+echo "       ${result#*TOOL RESULT: }"
 
 # -----------------------------------------------------------------------------
 bold "Phase 5: offline (network unplugged)"
