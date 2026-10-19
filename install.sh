@@ -139,7 +139,7 @@ step_preflight() {
     have sudo || die "sudo is not installed."
     if ! is_dry_run; then
       info "Asking for your password once (needed to install software)..."
-      sudo -v || die "sudo failed — your user needs to be an administrator."
+      sudo true || die "sudo failed — your user needs to be an administrator."
       # Keep sudo alive for the whole install.
       ( while kill -0 "$$" 2>/dev/null; do sudo -n true 2>/dev/null; sleep 50; done ) &
     fi
@@ -237,13 +237,17 @@ step_files() {
     if write_file "$INSTALL_DIR/$rel" "$mode" < "$f"; then changed=$((changed + 1)); fi
   done < <(find "$REPO_DIR/scripts" "$REPO_DIR/tools" "$REPO_DIR/docker" "$REPO_DIR/assets" \
              -type f ! -name '*.pyc' ! -path '*/__pycache__/*' ! -name '.env' -print0 | sort -z)
-  for f in config.env config.local.env; do
-    if [[ -f "$REPO_DIR/$f" ]]; then
-      if write_file "$INSTALL_DIR/$f" 644 < "$REPO_DIR/$f"; then changed=$((changed + 1)); fi
-    elif [[ -f "$INSTALL_DIR/$f" ]]; then
-      as_root rm -f "$INSTALL_DIR/$f"; changed=$((changed + 1))
-    fi
-  done
+  # The installed config = config.env + your overrides (config.local.env and
+  # CYBERDECK_CONFIG), so AI mode and the tools see exactly what install.sh saw.
+  if write_file "$INSTALL_DIR/config.env" 644 < "$REPO_DIR/config.env"; then changed=$((changed + 1)); fi
+  local overrides=()
+  [[ -f "$REPO_DIR/config.local.env" ]] && overrides+=("$REPO_DIR/config.local.env")
+  [[ -n "${CYBERDECK_CONFIG:-}" ]] && overrides+=("$CYBERDECK_CONFIG")
+  if (( ${#overrides[@]} > 0 )); then
+    if cat "${overrides[@]}" | write_file "$INSTALL_DIR/config.local.env" 644; then changed=$((changed + 1)); fi
+  elif [[ -f "$INSTALL_DIR/config.local.env" ]]; then
+    as_root rm -f "$INSTALL_DIR/config.local.env"; changed=$((changed + 1))
+  fi
   if (( changed > 0 )); then ok "Copied $changed changed file(s)"; else skip "Files are up to date"; fi
 
   local link target
