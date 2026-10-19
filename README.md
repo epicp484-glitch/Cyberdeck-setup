@@ -93,6 +93,8 @@ Double-click **AI Mode** on the desktop (it's also in the menu). It:
 3. makes sure Ollama, Open WebUI and Kiwix are running and loads the model into RAM,
 4. opens the chat **fullscreen** in a tiny kiosk window.
 
+![AI mode kiosk window (from the automated test)](docs/ai-mode-kiosk.png)
+
 To leave: press **Ctrl+Q** in the AI window (closing it exits AI mode), double-click
 **Exit AI Mode**, or run `exit-ai-mode`. That puts all your settings, apps and services back
 and frees the model's RAM.
@@ -162,7 +164,8 @@ scripts/
   offline-check.sh         the --offline-check
   lib/common.sh            shared helpers (logging, --dry-run, config loading)
 assets/                    launcher icons
-tests/                     Docker test of the whole install
+docs/                      screenshot for this README
+tests/                     Docker test of the whole install + unit tests
 ```
 
 The installer copies the scripts, tools and config to `/opt/cyberdeck`, so the deck keeps
@@ -194,9 +197,12 @@ tests/run-docker-test.sh          # KEEP=1 keeps the container for poking around
 
 It runs the dry run (must change nothing), a full install, a second install (must skip
 everything), AI mode and exit AI mode on a virtual screen (with a screenshot of the kiosk
-window in `tests/output/`), then unplugs the network and runs `--offline-check`, and finally
-reboots the container and checks that everything comes back by itself.
-To keep it fast it uses a tiny test model and a tiny test Wikipedia instead of the big downloads
+window in `tests/output/`), a chat through Open WebUI that must make it run the Wikipedia
+tool, then unplugs the network and runs `--offline-check`, and finally reboots the container
+and checks that everything comes back by itself.
+Quick unit tests for the Wikipedia tool (no Docker needed): `python3 tests/test_offline_wikipedia.py`.
+
+To keep it fast the Docker test uses a tiny test model and a tiny test Wikipedia instead of the big downloads
 (`TEST_REAL_MODEL=1` uses the real model).
 
 ---
@@ -292,6 +298,9 @@ Things I had to decide without asking. Change any of them in `config.env`.
   machine it was built on couldn't reach ollama.com, download.kiwix.org, Hugging Face or packages.linuxmint.com.
   So the test pre-installs Ollama from the official `ollama/ollama` Docker image, uses a tiny random-weight
   test model and a small Wikipedia-style test file, and turns off the Mint package repo inside the test machine.
+  A random-weight model can't decide to call tools, so for one test a small stand-in for Ollama
+  (`tests/fixtures/fake_tool_ollama.py`) always asks for the Wikipedia tool. That proves Open WebUI runs the tool and
+  hands the article back. How well the real Qwen 3.5 4B chooses to use the tool can only be seen on the deck.
   Everything else ran for real: apt, Docker's repo, pulling Open WebUI, all services, the tool install,
   AI mode on a virtual screen, the offline check with the network unplugged, and a reboot.
   The real downloads (Ollama installer, `qwen3.5:4b`, the 12 GB Wikipedia file) first run on the deck itself.
